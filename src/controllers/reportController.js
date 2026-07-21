@@ -62,4 +62,32 @@ const verifyReport = async (req, res) => {
   }
 };
 
-module.exports = { createReport, getReports, verifyReport };
+const searchReports = async (req, res) => {
+  try {
+    const { longitude, latitude, radius } = req.query;
+
+    if (!longitude || !latitude) {
+      return res.status(400).json({ message: 'Longitude and latitude are required' });
+    }
+
+    const maxDistance = radius ? Number(radius) : 5000; // meters, default 5km
+
+    const reports = await Report.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [Number(longitude), Number(latitude)],
+          },
+          $maxDistance: maxDistance,
+        },
+      },
+    });
+
+    res.status(200).json(reports);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createReport, getReports, verifyReport, searchReports };
