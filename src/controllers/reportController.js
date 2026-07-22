@@ -12,6 +12,7 @@ const createReport = async (req, res) => {
       severity,
       description,
       photoUrl: req.file ? req.file.path : '',
+      creator: req.user._id,
       location: {
         type: 'Point',
         coordinates: [longitude, latitude],
@@ -36,7 +37,7 @@ const getReports = async (req, res) => {
 const verifyReport = async (req, res) => {
   try {
     const { id } = req.params;
-    const { vote } = req.body; // 'yes', 'no', or 'notSure'
+    const { vote } = req.body;
 
     if (!['yes', 'no', 'notSure'].includes(vote)) {
       return res.status(400).json({ message: 'Vote must be yes, no, or notSure' });
@@ -46,6 +47,10 @@ const verifyReport = async (req, res) => {
 
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
+    }
+
+    if (report.creator && report.creator.toString() === req.user._id.toString()) {
+      return res.status(403).json({ message: 'You cannot verify your own report' });
     }
 
     report.confirmations[vote] += 1;
@@ -70,7 +75,7 @@ const searchReports = async (req, res) => {
       return res.status(400).json({ message: 'Longitude and latitude are required' });
     }
 
-    const maxDistance = radius ? Number(radius) : 5000; // meters, default 5km
+    const maxDistance = radius ? Number(radius) : 5000;
 
     const reports = await Report.find({
       location: {

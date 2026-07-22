@@ -15,6 +15,10 @@ const reportSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    creator: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     location: {
       type: {
         type: String,
