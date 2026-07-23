@@ -1,10 +1,18 @@
-const { Resend } = require('resend');
+const nodmailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodmailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 const sendOtpEmail = async (to, otp) => {
-  await resend.emails.send({
-    from: 'FloodWatch <onboarding@resend.dev>',
+  await transporter.sendMail({
+    from: `"FloodWatch" <${process.env.EMAIL_USER}>`,
     to,
     subject: 'Your FloodWatch verification code',
     text: `Your OTP code is ${otp}. It expires in 10 minutes.`,

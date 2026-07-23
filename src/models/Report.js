@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const reportSchema = new mongoose.Schema(
   {
-    severity: {
+    waterLevel: {
       type: String,
       enum: ['Low', 'Medium', 'High'],
       required: true,
@@ -19,6 +19,12 @@ const reportSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    voters: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      }
+    ],
     location: {
       type: {
         type: String,

@@ -2,14 +2,14 @@ const Report = require('../models/Report');
 
 const createReport = async (req, res) => {
   try {
-    const { severity, description, longitude, latitude } = req.body;
+    const { waterLevel, description, longitude, latitude } = req.body;
 
-    if (!severity || !longitude || !latitude) {
-      return res.status(400).json({ message: 'Severity and location are required' });
+    if (!waterLevel || !longitude || !latitude) {
+      return res.status(400).json({ message: 'Water level and location are required' });
     }
 
     const report = await Report.create({
-      severity,
+      waterLevel,
       description,
       photoUrl: req.file ? req.file.path : '',
       creator: req.user._id,
@@ -34,7 +34,7 @@ const getReports = async (req, res) => {
   }
 };
 
-const verifyReport = async (req, res) => {
+const confirmReport = async (req, res) => {
   try {
     const { id } = req.params;
     const { vote } = req.body;
@@ -53,7 +53,16 @@ const verifyReport = async (req, res) => {
       return res.status(403).json({ message: 'You cannot verify your own report' });
     }
 
+    const alreadyVoted = report.voters.some(
+      (voterId) => voterId.toString() === req.user._id.toString()
+    );
+
+    if (alreadyVoted) {
+      return res.status(400).json({ message: 'You have already voted on this report' });
+    }
+
     report.confirmations[vote] += 1;
+    report.voters.push(req.user._id);
 
     if (report.confirmations.yes >= 3 && report.status === 'Unverified') {
       report.status = 'Verified';
@@ -95,4 +104,4 @@ const searchReports = async (req, res) => {
   }
 };
 
-module.exports = { createReport, getReports, verifyReport, searchReports };
+module.exports = { createReport, getReports, confirmReport, searchReports };
