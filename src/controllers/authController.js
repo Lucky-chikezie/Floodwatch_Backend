@@ -199,6 +199,29 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const verifyResetOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.resetOtp !== otp || Date.now() > user.resetOtpExpires) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    res.status(200).json({ message: 'OTP verified. You may now reset your password.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const googleSignIn = async (req, res) => {
   try {
     const { idToken } = req.body;
@@ -248,5 +271,6 @@ module.exports = {
   resendOtp,
   forgotPassword,
   resetPassword,
+  verifyResetOtp,
   googleSignIn,
 };
