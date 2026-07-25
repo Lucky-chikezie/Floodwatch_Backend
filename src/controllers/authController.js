@@ -8,7 +8,7 @@ const generateOtp = require('../utils/generateOtp');
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '2h' });
 };
 
 const signup = async (req, res) => {
