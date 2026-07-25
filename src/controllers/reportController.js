@@ -104,4 +104,26 @@ const searchReports = async (req, res) => {
   }
 };
 
-module.exports = { createReport, getReports, confirmReport, searchReports };
+const deleteReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const report = await Report.findById(id);
+
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    if (report.creator && report.creator.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only delete your own reports' });
+    }
+
+    await report.deleteOne();
+
+    res.status(200).json({ message: 'Report deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createReport, getReports, confirmReport, searchReports, deleteReport };
