@@ -1,6 +1,6 @@
 # FloodWatch Backend
 
-Backend API for FloodWatch, a community-powered flood early warning platform. Users report flooding in real time, nearby users verify reports, and the map/feed stay updated automatically. Built for Group 6's FloodWatch MVP1.
+Backend API for FloodWatch, a community-powered flood early warning platform. Users report flooding in real time, nearby users confirm reports, and the map/feed stay updated automatically. Built for Group 6's FloodWatch MVP1.
 
 **Live API:** https://floodwatch-backend-82y3.onrender.com
 **Repo:** https://github.com/Lucky-chikezie/Floodwatch_Backend
@@ -15,26 +15,27 @@ Backend API for FloodWatch, a community-powered flood early warning platform. Us
 - OpenWeatherMap for rainfall/weather data
 - node-cron for scheduled report decay
 - JWT (jsonwebtoken) + bcryptjs for authentication
-- Resend for transactional (OTP) emails
+- Brevo (HTTP API) for transactional OTP emails
 - google-auth-library for Google Sign-In
 
 ## Features
 
 | Feature | Status |
 |---|---|
-| Flood Reporting (with photo upload) | ✅ |
-| Community Feed | ✅ |
-| Community Verification (self-verify blocked) | ✅ |
-| Interactive Map data | ✅ |
-| Search by Location | ✅ |
-| Automatic Report Decay | ✅ |
-| Weather Alerts | ✅ |
-| Weather-Triggered Flood Reporting | ✅ |
-| Sign Up / Login (JWT) | ✅ |
-| Email OTP Verification | ✅ |
-| Resend OTP | ✅ |
-| Forgot / Reset Password | ✅ |
-| Google Sign-In | ✅ (code complete; awaiting frontend integration test) |
+| Flood Reporting (with photo upload) | Done |
+| Community Feed | Done |
+| Community Confirmation (self-confirm blocked, duplicate-confirm blocked) | Done |
+| Delete Report (owner-only) | Done |
+| Interactive Map data | Done |
+| Search by Location | Done |
+| Automatic Report Decay | Done |
+| Weather Alerts | Done |
+| Weather-Triggered Flood Reporting | Done |
+| Sign Up / Login (JWT) | Done |
+| Email OTP Verification | Done |
+| Resend OTP | Done |
+| Forgot Password / Verify Reset OTP / Reset Password | Done |
+| Google Sign-In | Code complete; awaiting frontend integration test |
 | SMS OTP | Planned, not yet built |
 
 ## Getting Started (Local Setup)
@@ -59,7 +60,8 @@ Backend API for FloodWatch, a community-powered flood early warning platform. Us
    CLOUDINARY_API_SECRET=your_api_secret
    OPENWEATHER_API_KEY=your_openweather_key
    JWT_SECRET=your_random_secret_string
-   RESEND_API_KEY=your_resend_api_key
+   BREVO_API_KEY=your_brevo_api_key
+   EMAIL_USER=your_brevo_verified_sender_email
    GOOGLE_CLIENT_ID=your_google_oauth_client_id
    ```
 
@@ -70,7 +72,7 @@ Backend API for FloodWatch, a community-powered flood early warning platform. Us
 
    Server runs on `http://localhost:5000` by default.
 
-> Note for deployment: Render (and most hosts) do not read your local `.env` file — environment variables must also be added directly in the hosting platform's dashboard.
+> Note for deployment: Render (and most hosts) do not read your local `.env` file — every one of the variables above must also be added directly in the hosting platform's Environment tab, or auth/email features will fail even though local testing works.
 
 ## API Endpoints
 
@@ -79,55 +81,51 @@ Base URL (live): `https://floodwatch-backend-82y3.onrender.com`
 
 ### Auth
 
-**Sign Up**
-`POST /api/auth/signup`
+**Sign Up** — `POST /api/auth/signup`
 ```json
 { "name": "Jane Doe", "email": "jane@example.com", "password": "yourpassword" }
 ```
-Creates the user (unverified) and sends a 6-digit OTP to their email. Returns `201` with a message — no token yet, since the account isn't verified.
+Creates the user (unverified) and sends a 6-digit OTP to their email via Brevo. If the OTP email fails to send, the user record is automatically deleted so the same email can be retried cleanly.
 
-**Verify OTP**
-`POST /api/auth/verify-otp`
+**Verify OTP** — `POST /api/auth/verify-otp`
 ```json
 { "email": "jane@example.com", "otp": "123456" }
 ```
 Marks the account verified and returns a JWT token. OTP expires 10 minutes after signup.
 
-**Resend OTP**
-`POST /api/auth/resend-otp`
+**Resend OTP** — `POST /api/auth/resend-otp`
 ```json
 { "email": "jane@example.com" }
 ```
-Generates and sends a fresh OTP if the account isn't already verified.
 
-**Login**
-`POST /api/auth/login`
+**Login** — `POST /api/auth/login`
 ```json
 { "email": "jane@example.com", "password": "yourpassword" }
 ```
-Returns a JWT token. Blocked with `403` if the account hasn't been OTP-verified yet.
+Blocked with `403` if the account hasn't been OTP-verified yet.
 
-**Forgot Password**
-`POST /api/auth/forgot-password`
+**Forgot Password** — `POST /api/auth/forgot-password`
 ```json
 { "email": "jane@example.com" }
 ```
-Sends a separate reset OTP to the user's email.
+Sends a reset OTP to the user's email.
 
-**Reset Password**
-`POST /api/auth/reset-password`
+**Verify Reset OTP** — `POST /api/auth/verify-reset-otp`
+```json
+{ "email": "jane@example.com", "otp": "123456" }
+```
+Confirms the reset OTP is valid without changing the password — powers a separate "Verify Code" screen before the "New Password" screen.
+
+**Reset Password** — `POST /api/auth/reset-password`
 ```json
 { "email": "jane@example.com", "otp": "123456", "newPassword": "newpassword456" }
 ```
 
-**Google Sign-In**
-`POST /api/auth/google-signin`
+**Google Sign-In** — `POST /api/auth/google-signin`
 ```json
 { "idToken": "the_id_token_from_google_sdk" }
 ```
-Verifies the token with Google, then creates or logs in the matching user. Returns a JWT token like the other auth routes.
-
-> Note: OTP emails currently send via Resend's sandbox sender, which only delivers to the email address registered on the Resend account until a custom domain is verified. Full delivery to arbitrary user emails requires domain verification — flag this before relying on it for real users.
+Verifies the token with Google, then creates or logs in the matching user.
 
 ### Reports
 
@@ -138,33 +136,36 @@ Content-Type: `multipart/form-data`
 
 | Field | Type | Required |
 |---|---|---|
-| severity | text (`Low`, `Medium`, `High`) | yes |
+| waterLevel | text (`Low`, `Medium`, `High`) | yes |
 | description | text | no |
 | longitude | text | yes |
 | latitude | text | yes |
 | photo | file | no |
 
 **Get all reports (Community Feed / Map data)**
-`GET /api/reports`
-Returns all reports, newest first. No auth required.
+`GET /api/reports` — no auth required, newest first.
 
 **Search reports by location**
-`GET /api/reports/search?longitude={lng}&latitude={lat}&radius={meters}`
-`radius` is optional, defaults to 5000 (5km).
+`GET /api/reports/search?longitude={lng}&latitude={lat}&radius={meters}` — `radius` optional, defaults to 5000 (5km).
 
-**Verify a report** — requires auth
-`PATCH /api/reports/:id/verify`
-Header: `Authorization: Bearer <token>`
+**Confirm a report** — requires auth
+`PATCH /api/reports/:id/confirm`
 ```json
 { "vote": "yes" }
 ```
-`vote` accepts `yes`, `no`, or `notSure`. Auto-marks `Verified` after 3 `yes` votes. Returns `403` if the logged-in user is the one who created the report — users can't verify their own reports.
+`vote` accepts `yes`, `no`, or `notSure`. Auto-marks `Verified` after 3 `yes` votes.
+- Returns `403` if the logged-in user created the report.
+- Returns `403` if the logged-in user already confirmed this report before.
+
+**Delete a report** — requires auth
+`DELETE /api/reports/:id`
+Only the report's creator can delete it; returns `403` otherwise.
 
 ### Weather
 
 **Get weather / rainfall data for a location**
 `GET /api/weather?latitude={lat}&longitude={lng}`
-Returns current weather plus a `triggerReportPrompt` flag — `true` when rainfall crosses the heavy-rainfall threshold, signaling the frontend to prompt the user to report flooding.
+Returns current weather plus a `triggerReportPrompt` flag — `true` when rainfall crosses the heavy-rainfall threshold.
 
 ## Authentication
 
@@ -204,4 +205,5 @@ Hosted on Render, connected directly to this GitHub repo. Pushing to `main` trig
 - Product decision: dropped "Current Area" from the map search UI — only "Search Area" remains.
 - Map should visually distinguish Verified vs Unverified reports.
 - Product is confirmed to be a web app, not a native mobile app.
+- OTP emails are sent via Brevo and confirmed working to any real email address.
 -
