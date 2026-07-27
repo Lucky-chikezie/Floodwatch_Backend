@@ -10,6 +10,8 @@ const reportRoutes = require('./src/routes/reportRoutes');
 const startDecayJob = require('./src/services/decayService');
 const weatherRoutes = require ('./src/routes/weatherRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const commentRoutes = require('./src/routes/commentRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes'); 
 
 const app = express();
 
@@ -20,6 +22,8 @@ app.use(express.json());
 app.use('/api/reports', reportRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
   res.send('FloodWatch API is running');

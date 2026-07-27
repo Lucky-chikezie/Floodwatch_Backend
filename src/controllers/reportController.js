@@ -19,7 +19,9 @@ const createReport = async (req, res) => {
       },
     });
 
-    res.status(201).json(report);
+    const populatedReport = await report.populate('creator', 'name');
+
+    res.status(201).json(populatedReport);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -27,7 +29,9 @@ const createReport = async (req, res) => {
 
 const getReports = async (req, res) => {
   try {
-    const reports = await Report.find().sort({ createdAt: -1 });
+    const reports = await Report.find()
+      .populate('creator', 'name')
+      .sort({ createdAt: -1 });
     res.status(200).json(reports);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -70,7 +74,9 @@ const confirmReport = async (req, res) => {
 
     await report.save();
 
-    res.status(200).json(report);
+    const populatedReport = await report.populate('creator', 'name');
+
+    res.status(200).json(populatedReport);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -96,7 +102,7 @@ const searchReports = async (req, res) => {
           $maxDistance: maxDistance,
         },
       },
-    });
+    }).populate('creator', 'name');
 
     res.status(200).json(reports);
   } catch (error) {
